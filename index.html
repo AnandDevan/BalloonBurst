@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Learning Box2D</title>
+    <script src="js/Box2D.js"></script>
+    <style>
+     </style>
+  </head>
+  <body>
+    <canvas id="c" width="640" height="480" style="border: 1px solid black"></canvas>
+	<audio id='balloonBurst'>  
+		<source src="assets/BalloonBurst.wav">
+	</audio>
+  </body>
+  <script>
+	// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+    window.requestAnimFrame = (function(){
+          return  window.requestAnimationFrame       || 
+                  window.webkitRequestAnimationFrame || 
+                  window.mozRequestAnimationFrame    || 
+                  window.oRequestAnimationFrame      || 
+                  window.msRequestAnimationFrame     || 
+                  function(/* function */ callback, /* DOMElement */ element){
+                    window.setTimeout(callback, 1000 / 60);
+                  };
+    })();
+	
+	var canvas = document.getElementById("c");
+    var context = canvas.getContext("2d");
+
+    var world;
+	var SCALE = 30;
+	var nextId = 0;
+	var objects = new Array(), ground;
+	var numDestroyed = 0;
+	
+	var nextColor = 0;
+	var ballColors = [ 	"rgba( 255, 152, 000, 0.5 )", // orange
+						"rgba( 255, 020, 147, 0.5 )", // pink
+						"rgba( 000, 000, 255, 0.5 )", // blue
+						"rgba( 000, 165, 000, 0.5 )", // green
+					];
+
+	var Ball = function( id, radius, x, y )
+	{
+		this.id = id;
+		this.radius = radius;
+		this.x = x;
+		this.y = y;
+		this.angle = 0.0;
+		this.color = ballColors[0];
+		this.destroy = false;
+	}
+
+	function init() {
+		var b2Vec2 = Box2D.Common.Math.b2Vec2
+		, b2BodyDef = Box2D.Dynamics.b2BodyDef
+		, b2Body = Box2D.Dynamics.b2Body
+		, b2FixtureDef = Box2D.Dynamics.b2FixtureDef
+		, b2Fixture = Box2D.Dynamics.b2Fixture
+		, b2World = Box2D.Dynamics.b2World
+		, b2MassData = Box2D.Collision.Shapes.b2MassData
+		, b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape
+		, b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
+		, b2DebugDraw = Box2D.Dynamics.b2DebugDraw
+		;
+
+		world = new b2World(
+			new b2Vec2(0, 0.5/*10*/)    //gravity
+			, true                 //allow sleep
+		);  
+	   	   
+		//create ground
+		var bodyDef = new b2BodyDef;     
+		bodyDef.type = b2Body.b2_staticBody;
+		bodyDef.position.x = canvas.width / 2 / SCALE;
+		bodyDef.position.y = (canvas.height / SCALE) - 1;
+  
+		var fixDef = new b2FixtureDef;
+		fixDef.density = 0.05;
+		fixDef.friction = 0.5;
+		fixDef.restitution = 0.0;
+		fixDef.shape = new b2PolygonShape;
+		// half width, half height. eg actual height here is 1 unit
+		fixDef.shape.SetAsBox((canvas.width / SCALE) / 2, 0.5 / 2);
+		world.CreateBody(bodyDef).CreateFixture(fixDef);
+		ground = { x: 0.0, y: canvas.height - 1.25*SCALE, width : canvas.width, height : 0.5*SCALE};
+		
+		addObject();
+		
+		canvas.addEventListener( 'mousedown', mousedown, false);
+   }
+   
+	function mousedown(evt) {
+        mouseX = evt.clientX - canvas.clientLeft;
+        mouseY = evt.clientY - canvas.clientTop;
+		for ( var i = 0; i < objects.length; i++ ) {
+			var ball = objects[i];
+			var delX =  ball.x*SCALE - mouseX;
+			var delY = ball.y*SCALE - mouseY;
+
+			if ( Math.pow( delX, 2) + Math.pow( delY, 2 ) < ball.radius*SCALE * ball.radius*SCALE )
+			{
+				ball.destroy = true;
+				var audio = document.getElementById( 'balloonBurst' );
+				audio.play();
+			}
+		}
+	}
+   
+	var addObject = function () {
+		if ( objects.length > 10 ) {
+			setTimeout( addObject, 1000 );
+			return;
+		}
+		
+		var numBalloons = Math.floor( Math.random()*3.0 + 1 );
+		for ( var i = 0; i < numBalloons; i++ ) {		
+			var bodyDef = new Box2D.Dynamics.b2BodyDef;     
+			bodyDef.type = Box2D.Dynamics.b2Body.b2_dynamicBody;		
+			bodyDef.position.x = Math.random() * canvas.width / SCALE;
+			bodyDef.position.y = 0.0; // Math.random() * 10;
+	  
+			var radius = ( 10.0 + Math.random() * 15.0 ) / SCALE;
+			var ball = new Ball( nextId, radius, bodyDef.position.x, bodyDef.position.y );
+			ball.color = ballColors[nextColor];
+			nextColor++;
+			if ( nextColor > ballColors.length - 1 ) {
+				nextColor = 0;
+			}		
+
+			var fixDef = new Box2D.Dynamics.b2FixtureDef;
+			fixDef.density = 1.0;
+			fixDef.friction = 0.5;
+			fixDef.restitution = 0.2;
+			fixDef.shape = new Box2D.Collision.Shapes.b2CircleShape( radius );
+			bodyDef.userData = ball;
+			world.CreateBody(bodyDef).CreateFixture(fixDef);
+
+			objects.push( ball );	
+		}
+		
+		setTimeout( addObject, 1000 );
+	}
+  
+   function update() {
+		world.Step( 1/60,   //frame-rate
+					10,     //velocity iterations
+					10      //position iterations
+				);
+				
+		updateObjects();
+
+		drawObjects();
+		world.ClearForces();     
+		requestAnimFrame(update);
+    };
+  
+    init();
+    requestAnimFrame(update);	
+
+	var updateObjects = function() {
+		for ( var b = world.GetBodyList(); b; b = b.m_next ) {			
+			if ( b.IsActive() ) {
+				if ( b.GetUserData() != null ) {
+					if ( typeof b.GetUserData() !== 'undefined'  ) {
+						var ball = b.GetUserData();
+						
+						if ( ball.destroy ) {			
+							world.DestroyBody( b );
+							objects.splice( objects.indexOf(ball), 1 );
+						}
+						else {
+							ball.x = b.GetPosition().x; 
+							ball.y = b.GetPosition().y;
+							ball.angle = b.GetAngle();
+							//ball.centerX = b.GetWorldCenter().x;
+							//ball.centerY = b.GetWorldCenter().y;
+							var edges = b.GetContactList();
+							if ( edges != null ) {
+								world.DestroyBody( b );
+								objects.splice( objects.indexOf(ball), 1 );
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	var drawObjects = function() {
+		context.clearRect( 0, 0, canvas.width, canvas.height);
+
+		for ( var i = 0;  i < objects.length; i++ ) {
+			var ball = objects[i];
+			if ( ball ) {
+				context.fillStyle = ball.color;
+				context.beginPath();
+				context.arc( ball.x*SCALE, ball.y*SCALE, ball.radius*SCALE, 0.75*Math.PI, 0.25 * Math.PI, false );
+				context.lineTo( ball.x*SCALE, ball.y*SCALE + ball.radius*SCALE * 1.5 );
+				context.closePath();
+				context.fill();
+				
+				if ( ground.y  - ball.y*SCALE - 3*ball.radius *SCALE > 1e-6 )
+				{
+					var ballBotY = ball.y*SCALE + ball.radius*SCALE * 1.5;
+					var threadLength = ball.radius*SCALE * 3.0;
+
+					var angle = 15*Math.PI/ 180.0;
+					var radiusThread = threadLength*0.25 / Math.sin(angle);
+					var delX = radiusThread * Math.cos(angle);
+					
+					context.strokeStyle = ball.color;				
+					context.beginPath();
+					context.moveTo( ball.x*SCALE, ballBotY + threadLength );
+					context.arc( ball.x*SCALE + delX, ballBotY + threadLength * 0.75, radiusThread, Math.PI - angle, Math.PI + angle, false );
+					context.moveTo( ball.x*SCALE,  ballBotY );
+					context.arc( ball.x*SCALE - delX, ballBotY + threadLength * 0.25, radiusThread, Math.PI*2 - angle, angle, false );
+					context.stroke();
+				}
+			}
+		}
+		
+		context.fillStyle = 'blue';
+		context.fillRect( ground.x, ground.y, ground.width, ground.height );
+	}
+	
+  </script>
+  
+</html>
