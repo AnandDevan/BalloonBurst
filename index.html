@@ -6,8 +6,8 @@
     <style>
      </style>
   </head>
-  <body>
-    <canvas id="c" width="640" height="480" style="border: 1px solid black"></canvas>
+  <body style='background-color:silver; position: absolute; padding:0; margin:0; height: 100%; width:100%; ; text-align:center'>
+    <canvas id="c"></canvas>
 	<audio id='balloonBurst'>  
 		<source src="assets/BalloonBurst.wav">
 	</audio>
@@ -54,6 +54,16 @@
 	}
 
 	function init() {
+		var w = window,
+			d = document,
+			e = d.documentElement,
+			g = d.getElementsByTagName('body')[0],
+			pageWidth = w.innerWidth || e.clientWidth || g.clientWidth,
+			pageHeight = w.innerHeight || e.clientHeight || g.clientHeight;
+		
+		canvas.width = pageWidth;
+		canvas.height = pageHeight;
+	
 		var b2Vec2 = Box2D.Common.Math.b2Vec2
 		, b2BodyDef = Box2D.Dynamics.b2BodyDef
 		, b2Body = Box2D.Dynamics.b2Body
@@ -204,7 +214,16 @@
 				context.lineTo( ball.x*SCALE, ball.y*SCALE + ball.radius*SCALE * 1.5 );
 				context.closePath();
 				context.fill();
-				
+
+				// draw a gradient fill on balloon to create a shine
+				var radgrad = context.createRadialGradient( ball.x*SCALE, ball.y*SCALE, 0 , ball.x*SCALE, ball.y*SCALE, ball.radius*SCALE );
+				radgrad.addColorStop( 0, 'rgba(255, 255, 255, 1.0)' );
+				radgrad.addColorStop( 1, ball.color );
+
+				context.fillStyle = radgrad;
+				context.arc( ball.x*SCALE, ball.y*SCALE, ball.radius*SCALE, 0, Math.PI*2.0 );
+				context.fill();
+
 				if ( ground.y  - ball.y*SCALE - 3*ball.radius *SCALE > 1e-6 )
 				{
 					var ballBotY = ball.y*SCALE + ball.radius*SCALE * 1.5;
