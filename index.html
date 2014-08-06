@@ -90,8 +90,9 @@
 		addObject();
 		
 		canvas.addEventListener( 'mousedown', mousedown, false);
-   }
+	}
    
+	var touchFactor = 1.0;
 	function mousedown(evt) {
         mouseX = evt.clientX - canvas.clientLeft;
         mouseY = evt.clientY - canvas.clientTop;
@@ -100,13 +101,15 @@
 			var delX =  ball.x*SCALE - mouseX;
 			var delY = ball.y*SCALE - mouseY;
 
-			if ( Math.pow( delX, 2) + Math.pow( delY, 2 ) < ball.radius*SCALE * ball.radius*SCALE )
+			if ( Math.pow( delX, 2) + Math.pow( delY, 2 ) < 4*ball.radius*SCALE * ball.radius*SCALE*touchFactor )
 			{
 				ball.destroy = true;
 				var audio = document.getElementById( 'balloonBurst' );
 				audio.play();
 			}
 		}
+		
+		touchFactor = 1.0;
 	}
    
 	var addObject = function () {
@@ -238,6 +241,7 @@
             default: return;
         }
 
+		touchFactor = 4.0;
         var simulatedEvent = document.createEvent("MouseEvent");
         simulatedEvent.initMouseEvent(type, true, true, window, 1, 
                                   first.screenX, first.screenY, 
