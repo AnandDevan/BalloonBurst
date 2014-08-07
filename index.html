@@ -99,6 +99,8 @@
 		
 		addObject();
 		
+		initTouchHandlers();
+
 		canvas.addEventListener( 'mousedown', mousedown, false);
 	}
    
@@ -247,6 +249,14 @@
 		context.fillStyle = 'blue';
 		context.fillRect( ground.x, ground.y, ground.width, ground.height );
 	}
+	
+    function initTouchHandlers() 
+    {
+        document.addEventListener("touchstart", touchHandler, true);
+        document.addEventListener("touchmove", touchHandler, true);
+        document.addEventListener("touchend", touchHandler, true);
+        document.addEventListener("touchcancel", touchHandler, true);    
+    }
 	
 	function touchHandler(event) {
         var touches = event.changedTouches,
