@@ -28,13 +28,13 @@
 	
 	var canvas = document.getElementById("c");
     var context = canvas.getContext("2d");
+	var burstAudio;
 
     var world;
 	var SCALE = 30;
-	var nextId = 0;
 	var objects = new Array(), ground;
-	var numDestroyed = 0;
 	
+	// set of predefined colors for balloon
 	var nextColor = 0;
 	var ballColors = [ 	"rgba( 255, 152, 000, 0.5 )", // orange
 						"rgba( 255, 020, 147, 0.5 )", // pink
@@ -42,9 +42,8 @@
 						"rgba( 000, 165, 000, 0.5 )", // green
 					];
 
-	var Ball = function( id, radius, x, y )
+	var Ball = function( radius, x, y )
 	{
-		this.id = id;
 		this.radius = radius;
 		this.x = x;
 		this.y = y;
@@ -54,13 +53,13 @@
 	}
 
 	function init() {
+		// make canvas occupy full page
 		var w = window,
 			d = document,
 			e = d.documentElement,
 			g = d.getElementsByTagName('body')[0],
 			pageWidth = w.innerWidth || e.clientWidth || g.clientWidth,
 			pageHeight = w.innerHeight || e.clientHeight || g.clientHeight;
-		
 		canvas.width = pageWidth;
 		canvas.height = pageHeight;
 	
@@ -78,7 +77,7 @@
 
 		world = new b2World(
 			new b2Vec2(0, 0.5/*10*/)    //gravity
-			, true                 //allow sleep
+			, true                 		//allow sleep
 		);  
 	   	   
 		//create ground
@@ -97,11 +96,14 @@
 		world.CreateBody(bodyDef).CreateFixture(fixDef);
 		ground = { x: 0.0, y: canvas.height - 1.25*SCALE, width : canvas.width, height : 0.5*SCALE};
 		
-		addObject();
+		addBalloon();
 		
 		initTouchHandlers();
-
 		canvas.addEventListener( 'mousedown', mousedown, false);
+
+		burstAudio =  new Audio("assets/BalloonBurst.wav");
+		burstAudio.preload = 'auto';
+		burstAudio.load();
 	}
    
 	var touchFactor = 1.0;
@@ -116,20 +118,22 @@
 			if ( Math.pow( delX, 2) + Math.pow( delY, 2 ) < 4*ball.radius*SCALE * ball.radius*SCALE*touchFactor )
 			{
 				ball.destroy = true;
-				var audio = document.getElementById( 'balloonBurst' );
-				audio.play();
+				var burst = burstAudio.cloneNode();
+				burst.play();				
 			}
 		}
 		
 		touchFactor = 1.0;
 	}
    
-	var addObject = function () {
+	var addBalloon = function () {
+		// don't add more than 10 balloons
 		if ( objects.length > 10 ) {
-			setTimeout( addObject, 1000 );
+			setTimeout( addBalloon, 1000 );
 			return;
 		}
 		
+		// add a random number of balloons
 		var numBalloons = Math.floor( Math.random()*3.0 + 1 );
 		for ( var i = 0; i < numBalloons; i++ ) {		
 			var bodyDef = new Box2D.Dynamics.b2BodyDef;     
@@ -138,7 +142,7 @@
 			bodyDef.position.y = 0.0; // Math.random() * 10;
 	  
 			var radius = ( 10.0 + Math.random() * 15.0 ) / SCALE;
-			var ball = new Ball( nextId, radius, bodyDef.position.x, bodyDef.position.y );
+			var ball = new Ball( radius, bodyDef.position.x, bodyDef.position.y );
 			ball.color = ballColors[nextColor];
 			nextColor++;
 			if ( nextColor > ballColors.length - 1 ) {
@@ -156,7 +160,7 @@
 			objects.push( ball );	
 		}
 		
-		setTimeout( addObject, 1000 );
+		setTimeout( addBalloon, 1000 );
 	}
   
    function update() {
@@ -190,8 +194,6 @@
 							ball.x = b.GetPosition().x; 
 							ball.y = b.GetPosition().y;
 							ball.angle = b.GetAngle();
-							//ball.centerX = b.GetWorldCenter().x;
-							//ball.centerY = b.GetWorldCenter().y;
 							var edges = b.GetContactList();
 							if ( edges != null ) {
 								world.DestroyBody( b );
@@ -278,13 +280,11 @@
                                   false, false, false, 0/*left*/, null);
 
         first.target.dispatchEvent(simulatedEvent);
-
         if ( event.type == "touchmove" && movingTile != null )
         {
             event.preventDefault();
         }
     }
 
-	</script>
-  
+	</script>  
 </html>
