@@ -50,7 +50,25 @@
 		this.angle = 0.0;
 		this.color = ballColors[0];
 		this.destroy = false;
+		this.numBumps = 0;
 	}
+
+	// create a box2d contact listener
+	var contactListener = new Box2D.Dynamics.b2ContactListener;
+    contactListener.BeginContact = function(contact) {}
+    contactListener.EndContact = function(contact) {
+		var balloonA = contact.GetFixtureA().GetBody().GetUserData();
+		if ( balloonA ) {
+			balloonA.numBumps++;
+		}
+
+		var balloonB = contact.GetFixtureB().GetBody().GetUserData();
+		if ( balloonB ) {
+			balloonB.numBumps++;
+		}		
+    }
+    contactListener.PostSolve = function(contact, impulse) {}
+    contactListener.PreSolve = function(contact, oldManifold) {}	
 
 	function init() {
 		// make canvas occupy full page
@@ -78,8 +96,9 @@
 		world = new b2World(
 			new b2Vec2(0, 0.5/*10*/)    //gravity
 			, true                 		//allow sleep
-		);  
-	   	   
+		); 
+		
+		world.SetContactListener( contactListener );	   	   
 		//create ground
 		var bodyDef = new b2BodyDef;     
 		bodyDef.type = b2Body.b2_staticBody;
@@ -94,7 +113,7 @@
 		// half width, half height. eg actual height here is 1 unit
 		fixDef.shape.SetAsBox((canvas.width / SCALE) / 2, 0.5 / 2);
 		world.CreateBody(bodyDef).CreateFixture(fixDef);
-		ground = { x: 0.0, y: canvas.height - 1.25*SCALE, width : canvas.width, height : 0.5*SCALE};
+		ground = { x: 0.0, y: canvas.height - 1.25*SCALE, width : canvas.width, height : SCALE};
 		
 		addBalloon();
 		
@@ -184,8 +203,7 @@
 			if ( b.IsActive() ) {
 				if ( b.GetUserData() != null ) {
 					if ( typeof b.GetUserData() !== 'undefined'  ) {
-						var ball = b.GetUserData();
-						
+						var ball = b.GetUserData();						
 						if ( ball.destroy ) {			
 							world.DestroyBody( b );
 							objects.splice( objects.indexOf(ball), 1 );
@@ -194,8 +212,7 @@
 							ball.x = b.GetPosition().x; 
 							ball.y = b.GetPosition().y;
 							ball.angle = b.GetAngle();
-							var edges = b.GetContactList();
-							if ( edges != null ) {
+							if ( ball.numBumps > 1 ) {
 								world.DestroyBody( b );
 								objects.splice( objects.indexOf(ball), 1 );
 							}
@@ -228,7 +245,7 @@
 				context.arc( ball.x*SCALE, ball.y*SCALE, ball.radius*SCALE, 0, Math.PI*2.0 );
 				context.fill();
 
-				if ( ground.y  - ball.y*SCALE - 3*ball.radius *SCALE > 1e-6 )
+				//if ( ground.y  - ball.y*SCALE - 3*ball.radius *SCALE > 1e-6 )
 				{
 					var ballBotY = ball.y*SCALE + ball.radius*SCALE * 1.5;
 					var threadLength = ball.radius*SCALE * 3.0;
@@ -249,7 +266,7 @@
 		}
 		
 		context.fillStyle = 'blue';
-		context.fillRect( ground.x, ground.y, ground.width, ground.height );
+		context.fillRect( ground.x, ground.y, ground.width, 2.0*ground.height );
 	}
 	
     function initTouchHandlers() 
